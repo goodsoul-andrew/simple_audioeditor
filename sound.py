@@ -19,7 +19,7 @@ class Sound:
         elif filename[-4:] == ".mp3":
             Sound._from_mp3(self, filename)
         else:
-            raise ValueError("Неподдерживаемый формат аудио")
+            raise ValueError("Неподдерживаемый формат аудио!")
 
     def _from_mp3(self, filename):
         tmp_name = str(uuid.uuid4()) + ".wav"
@@ -38,8 +38,10 @@ class Sound:
         if 'TPE1' in audio.tags: metadata['artist'] = audio.tags['TPE1'].text[0] if audio.tags['TPE1'].text else None
         if 'TALB' in audio.tags: metadata['album'] = audio.tags['TALB'].text[0] if audio.tags['TALB'].text else None
         if 'TCON' in audio.tags: metadata['genre'] = audio.tags['TCON'].text[0] if audio.tags['TCON'].text else None
-        if 'TRCK' in audio.tags: metadata['track_number'] = audio.tags['TRCK'].text[0] if audio.tags['TRCK'].text else None
-        if 'TDRC' in audio.tags: metadata['year'] = audio.tags['TDRC'].text[0] if audio.tags['TDRC'].text else None  # Год
+        if 'TRCK' in audio.tags: metadata['track_number'] = audio.tags['TRCK'].text[0] if audio.tags[
+            'TRCK'].text else None
+        if 'TDRC' in audio.tags: metadata['year'] = audio.tags['TDRC'].text[0] if audio.tags[
+            'TDRC'].text else None  # Год
         if 'APIC:cover' in audio.tags:
             metadata['cover_mime'] = audio.tags['APIC:cover'].mime
             metadata['cover_data'] = audio.tags['APIC:cover'].data
@@ -65,7 +67,7 @@ class Sound:
             else:
                 unpacked_frames = []
                 for i in range(0, len(frames) // self.sampwidth, 3):
-                    byte1, byte2, byte3 = struct.unpack('<BBB', frames[i:i+3])
+                    byte1, byte2, byte3 = struct.unpack('<BBB', frames[i:i + 3])
                     sample = (byte3 << 16) | (byte2 << 8) | byte1
                     if sample & (1 << 23):  # Если 24-й бит установлен (самый старший в 24 битах)
                         sample -= (1 << 24)  # Вычитаем 2^24 для получения отрицательного значения
@@ -88,7 +90,7 @@ class Sound:
 
     def save_to_wave(self, filename):
         if filename[-4:] != ".wav":
-            raise ValueError("Not wav destination file")
+            raise ValueError("Конечный файл должен иметь расширение wav!")
         if self.nchannels == 2:
             frames = list(itertools.chain(*zip(self.frames[0], self.frames[1])))
         else:
