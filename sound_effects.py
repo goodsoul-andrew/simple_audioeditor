@@ -1,9 +1,8 @@
-import sound
 from sound import Sound
 
 
 class SoundEffects:
-    def __init__(self, sound: "Sound"):
+    def __init__(self, sound: Sound):
         self.sound = sound
 
     def change_volume(self, factor: float):
@@ -37,7 +36,7 @@ class SoundEffects:
         self.sound.nframes = len(self.sound.frames[0])
         return self
 
-    def concat(self, other: "Sound"):
+    def concat(self, other: Sound):
         if self.sound.nchannels != other.nchannels or self.sound.framerate != other.framerate:
             raise ValueError("Разные расширения! Чтобы склеить, необходимо иметь одинаковый формат")
         for ch in range(self.sound.nchannels):

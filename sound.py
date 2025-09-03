@@ -5,6 +5,7 @@ import uuid
 import wave
 import ffmpeg
 import mutagen
+import numpy as np
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON, TDRC, TRCK, APIC, PictureType
 from mutagen.mp3 import MP3
 
@@ -62,6 +63,32 @@ class Sound:
                 self._max_val = -self._min_val - 1
             fmt_chars = ["B", "h", "?", "i"]
             self._fmt_char = fmt_chars[self.sampwidth - 1]
+            fmt = {1: np.uint8, 2: np.int16, 3: np.int32, 4: np.int32}
+            if self.sampwidth in fmt:
+                arrays = np.frombuffer(frames, dtype=fmt[self.sampwidth])
+                if self.sampwidth == 3:
+                    arrays = self._convert_24bit(arrays)
+            else:
+                raise ValueError("Неподдерживаемый формат ширины выборки!")
+            arrays = self._normalize_frames(arrays)
+            self.frames = self._split_channels(arrays)
+            print(self.frames)
+
+    '''def _from_wave(self, filename: str):
+        with wave.open(filename, "rb") as file:
+            self.nchannels = file.getnchannels()
+            self.nframes = file.getnframes()
+            self.sampwidth = file.getsampwidth()
+            self.framerate = file.getframerate()
+            frames = file.readframes(self.nframes)
+            if self.sampwidth == 1:
+                self._min_val = 0
+                self._max_val = 255
+            else:
+                self._min_val = -(2 ** (8 * self.sampwidth - 1))
+                self._max_val = -self._min_val - 1
+            fmt_chars = ["B", "h", "?", "i"]
+            self._fmt_char = fmt_chars[self.sampwidth - 1]
             if self.sampwidth != 3:
                 frames = list(struct.unpack("<" + self._fmt_char * (len(frames) // self.sampwidth), frames))
             else:
@@ -86,7 +113,27 @@ class Sound:
                     self.frames[i % 2].append(frames[i])
             else:
                 self.frames = [frames[:]]
-            del frames
+            del frames'''
+
+    def _convert_24bit(self, arrays):
+        expanded = np.zeros(arrays.shape[0] // 3, dtype=np.int32)
+        for i in range(0, len(arrays), 3):
+            sample = (arrays[i + 2] << 16) | (arrays[i + 1] << 8) | arrays[i]
+            if sample & (1 << 23):
+                sample -= (1 << 24)
+            expanded[i // 3] = sample
+        return expanded
+
+    def _normalize_frames(self, frames):
+        norm_factor = -self._min_val if self.sampwidth != 1 else self._max_val
+        frames = frames / norm_factor
+        return np.clip(frames, -1.0, 1.0)
+
+    def _split_channels(self, frames):
+        if self.nchannels == 2:
+            return [frames[i::2] for i in range(2)]
+        else:
+            return [frames]
 
     def save_to_wave(self, filename):
         if filename[-4:] != ".wav":
