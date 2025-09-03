@@ -1,12 +1,23 @@
 import subprocess
 
+import ffmpeg
+
 
 def mp3_to_wav (filename: str, new_fname: str):
     if filename[-4:] != ".mp3":
         raise ValueError("Not mp3 file")
     if new_fname[-4:] != ".wav":
         raise ValueError("Not wav destination file")
-    subprocess.call(['ffmpeg', '-i', filename, new_fname])
+    # subprocess.call(['ffmpeg', '-i', filename, new_fname])
+    input_stream = ffmpeg.input(filename)
+    output_stream = ffmpeg.output(
+        input_stream.audio,
+        new_fname,
+        acodec='pcm_s16le',
+        map_metadata=0,
+        format='wav'
+    )
+    ffmpeg.run(output_stream, overwrite_output=True, capture_stderr=True)
 
 
 def wav_to_mp3 (filename: str, new_fname: str):
@@ -14,7 +25,16 @@ def wav_to_mp3 (filename: str, new_fname: str):
         raise ValueError("Not wav file")
     if new_fname[-4:] != ".mp3":
         raise ValueError("Not mp3 destination file")
-    subprocess.call(['ffmpeg', '-i', filename, new_fname])
+    # subprocess.call(['ffmpeg', '-i', filename, new_fname])
+    input_stream = ffmpeg.input(filename)
+    output_stream = ffmpeg.output(
+        input_stream.audio,
+        new_fname,
+        acodec='libmp3lame',
+        map_metadata=0,
+        format='mp3'
+    )
+    ffmpeg.run(output_stream, overwrite_output=True, capture_stderr=True)
 
 
 def int_list_to_bytearray(int_list: list[int], bytes_length: int = 0) -> bytearray:

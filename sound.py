@@ -41,7 +41,7 @@ class Sound:
         if 'TRCK' in audio.tags: metadata['track_number'] = audio.tags['TRCK'].text[0] if audio.tags[
             'TRCK'].text else None
         if 'TDRC' in audio.tags: metadata['year'] = audio.tags['TDRC'].text[0] if audio.tags[
-            'TDRC'].text else None  # Год
+            'TDRC'].text else None
         if 'APIC:cover' in audio.tags:
             metadata['cover_mime'] = audio.tags['APIC:cover'].mime
             metadata['cover_data'] = audio.tags['APIC:cover'].data
