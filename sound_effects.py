@@ -14,19 +14,16 @@ class SoundEffects:
         return self
 
     def change_speed(self, factor: float):
-        # фактор > 1 - звук ускоряется, длина уменьшается
-        # фактор < 1 - звук замедляется, длина увеличивается
         if factor <= 0:
-            raise ValueError("Фактор должен быть больше 0!")
-        new_length = int(len(self.sound.frames[0]) / factor)
+            raise ValueError("Factor must be > 0")
+        old_len = len(self.sound.frames[0])
+        new_len = int(old_len / factor)
         for ch in range(self.sound.nchannels):
             self.sound.frames[ch] = [
-                self.sound.frames[ch][int(i * factor)]
-                for i in range(new_length)
-                if int(i * factor) < len(self.sound.frames[ch])
+                self.sound.frames[ch][min(int(i * factor), old_len - 1)]
+                for i in range(new_len)
             ]
-        self.sound.framerate = int(self.sound.framerate * factor) # частота дискретизации
-        self.sound.nframes = new_length # кол-во кадров
+        self.sound.nframes = new_len
         return self
 
     def cut(self, start_sec: float, end_sec: float):
