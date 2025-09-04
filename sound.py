@@ -1,3 +1,4 @@
+import itertools
 import os
 import struct
 import uuid
@@ -46,7 +47,6 @@ class Sound:
         self.frames = self.__normalize_frames(np.array(audio_data_list))
         self.nframes = len(self.frames[0])
         self.__get_mp3_tags()
-
 
     def __get_mp3_tags(self):
         metadata = {}

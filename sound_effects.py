@@ -21,6 +21,8 @@ class SoundEffects:
         return self
 
     def change_speed(self, factor: float):
+        # factor > 1 - ускорение
+        # factor < 1 - замедление
         if factor <= 0:
             raise ValueError("Factor must be > 0")
         old_len = self.sound.nframes
