@@ -1,3 +1,4 @@
+import numpy as np
 from sound import Sound
 
 
@@ -5,7 +6,7 @@ class SoundEffects:
     def __init__(self, sound: Sound):
         self.sound = sound
         self.effects_history = []
-        self.original_frames = [ch[:] for ch in self.sound.frames]
+        self.original_frames = np.copy(self.sound.frames)
         self.original_nchanels = self.sound.nchannels
         self.original_framerate = self.sound.framerate
 
@@ -13,8 +14,9 @@ class SoundEffects:
         self.effects_history.append({"operation": operation, **kwargs})
 
     def change_volume(self, factor: float):
-        for ch in range(self.sound.nchannels):
-            self.sound.frames[ch] = [max(-1.0, min(1.0, s * factor)) for s in self.sound.frames[ch]]
+        amplified_frames = self.sound.frames * factor
+        clipped_frames = np.clip(amplified_frames, -1.0, 1.0)
+        self.sound.frames = clipped_frames
         self.__record("change_volume", factor=factor)
         return self
 
@@ -22,38 +24,48 @@ class SoundEffects:
         # factor > 1 - ускорение
         # factor < 1 - замедление
         if factor <= 0:
-            raise ValueError("Фактор должен быть больше 0!")
-        old_len = len(self.sound.frames[0])
-        new_len = int(old_len / factor)
-        for ch in range(self.sound.nchannels):
-            self.sound.frames[ch] = [self.sound.frames[ch][min(int(i * factor), old_len - 1)] for i in range(new_len)]
+            raise ValueError("Factor must be > 0")
+        old_len = self.sound.nframes
+        new_len = int(self.sound.frames.shape[1] / factor)
+        if new_len <= 0:
+            raise ValueError("Слишком большое ускорение!")
+        indices = np.floor(np.arange(new_len) * factor).astype(int)
+        indices = np.clip(indices, 0, old_len - 1)
         self.sound.nframes = new_len
+        self.sound.frames = self.sound.frames[:, indices]
         self.__record("change_speed", factor=factor)
         return self
 
     def cut_fragment(self, start_sec: float, end_sec: float):
         start_idx = int(start_sec * self.sound.framerate)
         end_idx = int(end_sec * self.sound.framerate)
-        for ch in range(self.sound.nchannels):
-            self.sound.frames[ch] = (self.sound.frames[ch][:start_idx] + self.sound.frames[ch][end_idx:])
-        self.sound.nframes = len(self.sound.frames[0])
-        self.sound.nframes = len(self.sound.frames[0])
+        indices_to_keep = np.concatenate((np.arange(start_idx), np.arange(end_idx, self.sound.frames.shape[1])))
+        self.sound.frames = self.sound.frames[:, indices_to_keep]
+        # self.sound.frames = self.sound.frames[:, start_idx:end_idx]
+        self.sound.nframes = self.sound.frames.shape[1]
         self.__record("cut", start_sec=start_sec, end_sec=end_sec)
+        return self
+
+    def trim(self, start_sec: float, end_sec: float):
+        start_idx = int(start_sec * self.sound.framerate)
+        end_idx = int(end_sec * self.sound.framerate)
+        self.sound.frames = self.sound.frames[:, start_idx:end_idx]
+        self.sound.nframes = self.sound.frames.shape[1]
+        self.__record("trim", start_sec=start_sec, end_sec=end_sec)
         return self
 
     def concat(self, other: Sound):
         if self.sound.nchannels != other.nchannels or self.sound.framerate != other.framerate:
             raise ValueError("Разные расширения! Чтобы склеить, необходимо иметь одинаковый формат")
-        for ch in range(self.sound.nchannels):
-            self.sound.frames[ch].extend(other.frames[ch])
-        self.sound.nframes = len(self.sound.frames[0])
+        self.sound.frames = np.concatenate((self.sound.frames, other.frames), axis=1)
+        self.sound.nframes = self.sound.frames.shape[1]
         self.__record("concat", other=other)
         return self
 
     def return_to_original(self):
         self.sound.frames = self.original_frames
         self.sound.framerate = self.original_framerate
-        self.sound.nchannels = self.original_nchanels
+        self.sound.nchannels = [ch[:] for ch in self.sound.nchannels]
 
     # выполнить первые count операций из истории
     def replay_to_operation(self, count=None):
@@ -71,3 +83,4 @@ class SoundEffects:
     def show_effects_history(self):
         for i, op in enumerate(self.effects_history, 1):
             print(f"{i}: {op}")
+

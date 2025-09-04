@@ -4,8 +4,9 @@ import struct
 import uuid
 import wave
 import ffmpeg
-import mutagen
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON, TDRC, TRCK, APIC, PictureType
+import pydub
+import numpy as np
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON, TDRC, TRCK, APIC
 from mutagen.mp3 import MP3
 
 from converters import mp3_to_wav, wav_to_mp3
@@ -22,10 +23,29 @@ class Sound:
             raise ValueError("Неподдерживаемый формат аудио!")
 
     def _from_mp3(self, filename):
-        tmp_name = str(uuid.uuid4()) + ".wav"
-        mp3_to_wav(filename, tmp_name)
-        Sound._from_wav(self, tmp_name)
-        os.remove(tmp_name)
+        probe = ffmpeg.probe(filename)
+        audio_stream_info = next((s for s in probe['streams'] if s['codec_type'] == 'audio'), None)
+        self.framerate = int(audio_stream_info['sample_rate'])
+        self.nchannels = int(audio_stream_info['channels'])
+        stream = ffmpeg.input(filename, loglevel="quiet")
+        output_args = {'f': 's16le', 'acodec': 'pcm_s16le'}
+        process = ffmpeg.output(stream, '-', **output_args)
+        output_raw_bytes = process.run(capture_stdout=True, capture_stderr=True)[0]
+        self._fmt_char = "h"
+        self.sampwidth = 2
+        self._min_val = -(2 ** (8 * self.sampwidth - 1))
+        self._max_val = -self._min_val - 1
+        bytes_per_sample = 2 * self.nchannels
+        num_samples = len(output_raw_bytes) // bytes_per_sample
+        format_string = '<' + 'h' * self.nchannels * num_samples
+        unpacked_samples = struct.unpack(format_string, output_raw_bytes)
+        audio_data_list = [[] for _ in range(self.nchannels)]
+        for i in range(num_samples):
+            for ch in range(self.nchannels):
+                sample = unpacked_samples[i * self.nchannels + ch]
+                audio_data_list[ch].append(sample)
+        self.frames = self.__normalize_frames(np.array(audio_data_list))
+        self.nframes = len(self.frames[0])
         self.__get_mp3_tags()
 
     def __get_mp3_tags(self):
@@ -62,45 +82,47 @@ class Sound:
                 self._max_val = -self._min_val - 1
             fmt_chars = ["B", "h", "?", "i"]
             self._fmt_char = fmt_chars[self.sampwidth - 1]
-            if self.sampwidth != 3:
-                frames = list(struct.unpack("<" + self._fmt_char * (len(frames) // self.sampwidth), frames))
-            else:
-                unpacked_frames = []
-                for i in range(0, len(frames) // self.sampwidth, 3):
-                    byte1, byte2, byte3 = struct.unpack('<BBB', frames[i:i + 3])
-                    sample = (byte3 << 16) | (byte2 << 8) | byte1
-                    if sample & (1 << 23):  # Если 24-й бит установлен (самый старший в 24 битах)
-                        sample -= (1 << 24)  # Вычитаем 2^24 для получения отрицательного значения
-                    unpacked_frames.append(sample)
-                frames = unpacked_frames
-                del unpacked_frames
-            if self.sampwidth == 1:
-                for i in range(len(frames)):
-                    frames[i] = frames[i] / self._max_val * 2 - 1
-            else:
-                for i in range(len(frames)):
-                    frames[i] = frames[i] / -self._min_val
-            if self.nchannels == 2:
-                self.frames = [[], []]
-                for i in range(len(frames)):
-                    self.frames[i % 2].append(frames[i])
-            else:
-                self.frames = [frames[:]]
-            del frames
+            # fmt = {1: np.uint8, 2: np.int16, 3: np.int32, 4: np.int32}
+            dtypes = [np.uint8, np.int16, np.int32, np.int32]
+            self._dtype = dtypes[self.sampwidth - 1]
+            arrays = np.frombuffer(frames, dtype=dtypes[self.sampwidth - 1])
+            if self.sampwidth == 3:
+                arrays = self.__convert_24bit(arrays)
+            arrays = self.__normalize_frames(arrays)
+            self.frames = self.__split_channels(arrays)
+        self.mp3_metadata = {}
+
+    def __convert_24bit(self, arrays):
+        expanded = np.zeros(arrays.shape[0] // 3, dtype=np.int32)
+        for i in range(0, len(arrays), 3):
+            sample = (arrays[i + 2] << 16) | (arrays[i + 1] << 8) | arrays[i]
+            if sample & (1 << 23):
+                sample -= (1 << 24)
+            expanded[i // 3] = sample
+        return expanded
+
+    def __normalize_frames(self, frames):
+        norm_factor = -self._min_val if self.sampwidth != 1 else self._max_val
+        frames = frames / norm_factor
+        return np.clip(frames, -1.0, 1.0)
+
+    def __split_channels(self, frames):
+        if self.nchannels == 2:
+            return np.array([frames[i::2] for i in range(2)])
+        else:
+            return np.array([frames])
 
     def save_to_wav(self, filename):
         if filename[-4:] != ".wav":
             raise ValueError("Конечный файл должен иметь расширение wav!")
         if self.nchannels == 2:
-            frames = list(itertools.chain(*zip(self.frames[0], self.frames[1])))
+            frames = self.frames.T.ravel()
         else:
-            frames = self.frames[0][:]
+            frames = self.frames.ravel()
         if self.sampwidth == 1:
-            for i in range(len(frames)):
-                frames[i] = int((frames[i] + 1) * self._max_val)
+            frames = np.clip((frames + 1) * self._max_val, self._min_val, self._max_val).astype(np.uint8)
         else:
-            for i in range(len(frames)):
-                frames[i] = int(frames[i] * -self._min_val)
+            frames = np.clip(frames * -self._min_val, self._min_val, self._max_val).astype(self._dtype)
         with wave.open(filename, "wb") as file:
             file.setnchannels(self.nchannels)
             file.setnframes(self.nframes)
