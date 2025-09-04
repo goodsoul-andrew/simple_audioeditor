@@ -34,12 +34,22 @@ class SoundEffects:
         self.__record("change_speed", factor=factor)
         return self
 
-    def cut(self, start_sec: float, end_sec: float):
+    def cut_fragment(self, start_sec: float, end_sec: float):
+        start_idx = int(start_sec * self.sound.framerate)
+        end_idx = int(end_sec * self.sound.framerate)
+        indices_to_keep = np.concatenate((np.arange(start_idx), np.arange(end_idx, self.sound.frames.shape[1])))
+        self.sound.frames = self.sound.frames[:, indices_to_keep]
+        # self.sound.frames = self.sound.frames[:, start_idx:end_idx]
+        self.sound.nframes = self.sound.frames.shape[1]
+        self.__record("cut", start_sec=start_sec, end_sec=end_sec)
+        return self
+
+    def trim(self, start_sec: float, end_sec: float):
         start_idx = int(start_sec * self.sound.framerate)
         end_idx = int(end_sec * self.sound.framerate)
         self.sound.frames = self.sound.frames[:, start_idx:end_idx]
         self.sound.nframes = self.sound.frames.shape[1]
-        self.__record("cut", start_sec=start_sec, end_sec=end_sec)
+        self.__record("trim", start_sec=start_sec, end_sec=end_sec)
         return self
 
     def concat(self, other: Sound):
