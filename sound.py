@@ -50,12 +50,12 @@ class Sound:
             for ch in range(self.nchannels):
                 sample = unpacked_samples[i * self.nchannels + ch]
                 audio_data_list[ch].append(sample)
-        self.frames = self._normalize_frames(np.array(audio_data_list))
+        self.frames = self.__normalize_frames(np.array(audio_data_list))
         self.nframes = len(self.frames[0])
-        self._get_mp3_tags()
+        self.__get_mp3_tags()
 
 
-    def _get_mp3_tags(self):
+    def __get_mp3_tags(self):
         metadata = {}
         audio = MP3(self.filename, ID3=ID3)
         if audio.tags is None:
@@ -94,11 +94,11 @@ class Sound:
             self._dtype = dtypes[self.sampwidth - 1]
             arrays = np.frombuffer(frames, dtype=dtypes[self.sampwidth - 1])
             if self.sampwidth == 3:
-                arrays = self._convert_24bit(arrays)
-            arrays = self._normalize_frames(arrays)
-            self.frames = self._split_channels(arrays)
+                arrays = self.__convert_24bit(arrays)
+            arrays = self.__normalize_frames(arrays)
+            self.frames = self.__split_channels(arrays)
 
-    def _convert_24bit(self, arrays):
+    def __convert_24bit(self, arrays):
         expanded = np.zeros(arrays.shape[0] // 3, dtype=np.int32)
         for i in range(0, len(arrays), 3):
             sample = (arrays[i + 2] << 16) | (arrays[i + 1] << 8) | arrays[i]
@@ -107,12 +107,12 @@ class Sound:
             expanded[i // 3] = sample
         return expanded
 
-    def _normalize_frames(self, frames):
+    def __normalize_frames(self, frames):
         norm_factor = -self._min_val if self.sampwidth != 1 else self._max_val
         frames = frames / norm_factor
         return np.clip(frames, -1.0, 1.0)
 
-    def _split_channels(self, frames):
+    def __split_channels(self, frames):
         if self.nchannels == 2:
             return np.array([frames[i::2] for i in range(2)])
         else:
@@ -149,7 +149,7 @@ class Sound:
 
     def save_to_mp3(self, filename):
         tmp_name = str(uuid.uuid4()) + ".wav"
-        self.save_to_wave(tmp_name)
+        self.save_to_wav(tmp_name)
         wav_to_mp3(tmp_name, filename)
         os.remove(tmp_name)
         audio = MP3(filename)
