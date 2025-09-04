@@ -15,7 +15,7 @@ class Sound:
     def __init__(self, filename):
         self.filename = filename
         if filename[-4:] == ".wav":
-            Sound._from_wave(self, filename)
+            Sound._from_wav(self, filename)
         elif filename[-4:] == ".mp3":
             Sound._from_mp3(self, filename)
         else:
@@ -24,11 +24,11 @@ class Sound:
     def _from_mp3(self, filename):
         tmp_name = str(uuid.uuid4()) + ".wav"
         mp3_to_wav(filename, tmp_name)
-        Sound._from_wave(self, tmp_name)
+        Sound._from_wav(self, tmp_name)
         os.remove(tmp_name)
-        self._get_mp3_tags()
+        self.__get_mp3_tags()
 
-    def _get_mp3_tags(self):
+    def __get_mp3_tags(self):
         metadata = {}
         audio = MP3(self.filename, ID3=ID3)
         if audio.tags is None:
@@ -47,7 +47,7 @@ class Sound:
             metadata['cover_data'] = audio.tags['APIC:cover'].data
         self.mp3_metadata = metadata
 
-    def _from_wave(self, filename: str):
+    def _from_wav(self, filename: str):
         with wave.open(filename, "rb") as file:
             self.nchannels = file.getnchannels()
             self.nframes = file.getnframes()
@@ -88,7 +88,7 @@ class Sound:
                 self.frames = [frames[:]]
             del frames
 
-    def save_to_wave(self, filename):
+    def save_to_wav(self, filename):
         if filename[-4:] != ".wav":
             raise ValueError("Конечный файл должен иметь расширение wav!")
         if self.nchannels == 2:
@@ -121,7 +121,7 @@ class Sound:
 
     def save_to_mp3(self, filename):
         tmp_name = str(uuid.uuid4()) + ".wav"
-        self.save_to_wave(tmp_name)
+        self.save_to_wav(tmp_name)
         wav_to_mp3(tmp_name, filename)
         os.remove(tmp_name)
         audio = MP3(filename)

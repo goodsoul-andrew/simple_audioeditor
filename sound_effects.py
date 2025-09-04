@@ -1,23 +1,21 @@
 from sound import Sound
-from copy import deepcopy
 
 
 class SoundEffects:
-    def __init__(self, sound: "Sound"):
+    def __init__(self, sound: Sound):
         self.sound = sound
         self.effects_history = []
-        self.original_frames = self.sound.frames
-        self.original_nchanels = [ch[:] for ch in self.sound.nchannels]
+        self.original_frames = [ch[:] for ch in self.sound.frames]
+        self.original_nchanels = self.sound.nchannels
         self.original_framerate = self.sound.framerate
 
-    # надо бы приватной сделать, но не помню как
-    def record(self, operation: str, **kwargs):
+    def __record(self, operation: str, **kwargs):
         self.effects_history.append({"operation": operation, **kwargs})
 
     def change_volume(self, factor: float):
         for ch in range(self.sound.nchannels):
             self.sound.frames[ch] = [max(-1.0, min(1.0, s * factor)) for s in self.sound.frames[ch]]
-        self.record("change_volume", factor=factor)
+        self.__record("change_volume", factor=factor)
         return self
 
     def change_speed(self, factor: float):
@@ -30,7 +28,7 @@ class SoundEffects:
         for ch in range(self.sound.nchannels):
             self.sound.frames[ch] = [self.sound.frames[ch][min(int(i * factor), old_len - 1)] for i in range(new_len)]
         self.sound.nframes = new_len
-        self.record("change_speed", factor=factor)
+        self.__record("change_speed", factor=factor)
         return self
 
     def cut(self, start_sec: float, end_sec: float):
@@ -39,22 +37,22 @@ class SoundEffects:
         for ch in range(self.sound.nchannels):
             self.sound.frames[ch] = self.sound.frames[ch][start_idx:end_idx]
         self.sound.nframes = len(self.sound.frames[0])
-        self.record("cut", start_sec=start_sec, end_sec=end_sec)
+        self.__record("cut", start_sec=start_sec, end_sec=end_sec)
         return self
 
-    def concat(self, other: "Sound"):
+    def concat(self, other: Sound):
         if self.sound.nchannels != other.nchannels or self.sound.framerate != other.framerate:
             raise ValueError("Разные расширения! Чтобы склеить, необходимо иметь одинаковый формат")
         for ch in range(self.sound.nchannels):
             self.sound.frames[ch].extend(other.frames[ch])
         self.sound.nframes = len(self.sound.frames[0])
-        self.record("concat", other=other)
+        self.__record("concat", other=other)
         return self
 
     def return_to_original(self):
         self.sound.frames = self.original_frames
         self.sound.framerate = self.original_framerate
-        self.sound.nchannels = [ch[:] for ch in self.sound.nchannels]
+        self.sound.nchannels = self.original_nchanels
 
     # выполнить первые count операций из истории
     def replay_to_operation(self, count=None):
