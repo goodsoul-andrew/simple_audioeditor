@@ -21,13 +21,6 @@ class Sound:
         else:
             raise ValueError("Неподдерживаемый формат аудио!")
 
-    '''def _from_mp3(self, filename):
-        tmp_name = str(uuid.uuid4()) + ".wav"
-        mp3_to_wav(filename, tmp_name)
-        Sound._from_wave(self, tmp_name)
-        os.remove(tmp_name)
-        self._get_mp3_tags()'''
-
     def _from_mp3(self, filename):
         probe = ffmpeg.probe(filename)
         audio_stream_info = next((s for s in probe['streams'] if s['codec_type'] == 'audio'), None)
@@ -97,6 +90,7 @@ class Sound:
                 arrays = self.__convert_24bit(arrays)
             arrays = self.__normalize_frames(arrays)
             self.frames = self.__split_channels(arrays)
+        self.mp3_metadata = {}
 
     def __convert_24bit(self, arrays):
         expanded = np.zeros(arrays.shape[0] // 3, dtype=np.int32)
@@ -135,16 +129,11 @@ class Sound:
             file.setframerate(self.framerate)
             file.setsampwidth(self.sampwidth)
             if self.sampwidth == 3:
-                data = []
-                for num in frames:
-                    packed_num = struct.pack("i", int(num))
-                    data.append(packed_num[:3])
+                data = b''.join([struct.pack("<i", int(num))[:3] for num in frames])
             else:
-                data = []
-                for num in frames:
-                    packed_num = struct.pack(self._fmt_char, int(num))
-                    data.append(packed_num)
-            file.writeframes(b''.join(data))
+                format_string = '<' + self._fmt_char * len(frames)
+                data = struct.pack(format_string, *frames)
+            file.writeframes(data)
             del data
 
     def save_to_mp3(self, filename):
