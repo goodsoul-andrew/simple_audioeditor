@@ -97,26 +97,21 @@ class Sound:
             frames = self.frames[0][:]
         if self.sampwidth == 1:
             for i in range(len(frames)):
-                frames[i] = (frames[i] + 1) * self._max_val
+                frames[i] = int((frames[i] + 1) * self._max_val)
         else:
             for i in range(len(frames)):
-                frames[i] = frames[i] * -self._min_val
+                frames[i] = int(frames[i] * -self._min_val)
         with wave.open(filename, "wb") as file:
             file.setnchannels(self.nchannels)
             file.setnframes(self.nframes)
             file.setframerate(self.framerate)
             file.setsampwidth(self.sampwidth)
             if self.sampwidth == 3:
-                data = []
-                for num in frames:
-                    packed_num = struct.pack("i", int(num))
-                    data.append(packed_num[:3])
+                data = b''.join([struct.pack("<i", int(num))[:3] for num in frames])
             else:
-                data = []
-                for num in frames:
-                    packed_num = struct.pack(self._fmt_char, int(num))
-                    data.append(packed_num)
-            file.writeframes(b''.join(data))
+                format_string = '<' + self._fmt_char * len(frames)
+                data = struct.pack(format_string, *frames)
+            file.writeframes(data)
             del data
 
     def save_to_mp3(self, filename):
