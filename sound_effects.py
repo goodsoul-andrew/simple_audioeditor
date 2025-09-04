@@ -7,7 +7,7 @@ class SoundEffects:
         self.sound = sound
         self.effects_history = []
         self.original_frames = np.copy(self.sound.frames)
-        self.original_nchanels = self.sound.nchannels
+        self.original_nchannels = self.sound.nchannels
         self.original_framerate = self.sound.framerate
 
     def __record(self, operation: str, **kwargs):
@@ -63,12 +63,12 @@ class SoundEffects:
         return self
 
     def return_to_original(self):
-        self.sound.frames = self.original_frames
+        self.sound.frames = np.copy(self.original_frames)
         self.sound.framerate = self.original_framerate
-        self.sound.nchannels = [ch[:] for ch in self.sound.nchannels]
+        self.sound.nchannels = self.original_nchannels
 
     # выполнить первые count операций из истории
-    def replay_to_operation(self, count=None):
+    def replay_operation(self, count=None):
         self.return_to_original()
         for op in (self.effects_history[:count] if count else self.effects_history):
             if op["operation"] == "change_volume":
@@ -76,11 +76,10 @@ class SoundEffects:
             elif op["operation"] == "change_speed":
                 self.change_speed(op["factor"])
             elif op["operation"] == "cut":
-                self.cut(op["start_sec"], op["end_sec"])
+                self.cut_fragment(op["start_sec"], op["end_sec"])
             elif op["operation"] == "concat":
                 self.concat(op["other"])
 
     def show_effects_history(self):
         for i, op in enumerate(self.effects_history, 1):
             print(f"{i}: {op}")
-
