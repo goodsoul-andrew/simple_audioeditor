@@ -31,11 +31,12 @@ class SoundEffects:
         self.__record("change_speed", factor=factor)
         return self
 
-    def cut(self, start_sec: float, end_sec: float):
+    def cut_fragment(self, start_sec: float, end_sec: float):
         start_idx = int(start_sec * self.sound.framerate)
         end_idx = int(end_sec * self.sound.framerate)
         for ch in range(self.sound.nchannels):
-            self.sound.frames[ch] = self.sound.frames[ch][start_idx:end_idx]
+            self.sound.frames[ch] = (self.sound.frames[ch][:start_idx] + self.sound.frames[ch][end_idx:])
+        self.sound.nframes = len(self.sound.frames[0])
         self.sound.nframes = len(self.sound.frames[0])
         self.__record("cut", start_sec=start_sec, end_sec=end_sec)
         return self
