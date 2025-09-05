@@ -113,7 +113,15 @@ class Sound:
         else:
             return np.array([frames])
 
-    def save_to_wav(self, filename):
+    def save(self, filename: str):
+        if filename[-4:] == ".wav":
+            self.__save_to_wav(filename)
+        elif filename[-4:] == ".mp3":
+            self.__save_to_mp3(filename)
+        else:
+            raise ValueError("Неподдерживаемый формат!")
+
+    def __save_to_wav(self, filename):
         if filename[-4:] != ".wav":
             raise ValueError("Конечный файл должен иметь расширение wav!")
         if self.nchannels == 2:
@@ -137,9 +145,9 @@ class Sound:
             file.writeframes(data)
             del data
 
-    def save_to_mp3(self, filename):
+    def __save_to_mp3(self, filename):
         tmp_name = str(uuid.uuid4()) + ".wav"
-        self.save_to_wav(tmp_name)
+        self.__save_to_wav(tmp_name)
         wav_to_mp3(tmp_name, filename)
         os.remove(tmp_name)
         audio = MP3(filename)
