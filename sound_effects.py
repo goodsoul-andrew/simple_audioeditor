@@ -65,11 +65,16 @@ class SoundEffects:
     def take_fragment(self, start_sec: float, end_sec: float):
         start_idx = int(start_sec * self.sound.framerate)
         end_idx = int(end_sec * self.sound.framerate)
-        # indices_to_keep = np.concatenate((np.arange(start_idx), np.arange(end_idx, self.sound.frames.shape[1])))
-        self.sound.frames = self.sound.frames[:, start_idx:end_idx]
-        self.sound.nframes = self.sound.frames.shape[1]
+        new_frames = np.copy(self.sound.frames[:, start_idx:end_idx])
+        fragment = Sound.__new__(Sound)
+        fragment.frames = new_frames
+        fragment.nframes = new_frames.shape[1]
+        fragment.nchannels = self.sound.nchannels
+        fragment.framerate = self.sound.framerate
+        fragment.sampwidth = self.sound.sampwidth
+        fragment.path = None
         self.__record("take_fragment", start_sec=start_sec, end_sec=end_sec)
-        return self
+        return SoundEffects(fragment)
 
     def return_to_original(self):
         self.sound.frames = np.copy(self.original_frames)

@@ -43,6 +43,11 @@ while True:
                 effects.concat(other)
                 print(green(f"Соединено с '{other_filename} в конце'"))
                 del other
+            case "take_fragment":
+                start_sec = float(args[0])
+                end_sec = float(args[1])
+                fragment = effects.take_fragment(start_sec, end_sec)
+                print(green(f"Выделен фрагмент {start_sec}-{end_sec} сек"))
             case "save":
                 new_name = args[0]
                 snd.save(new_name)
@@ -50,10 +55,13 @@ while True:
             case "history":
                 effects.show_effects_history()
             case "help":
-                print("change_volume [factor] - изменяет громкость в factor раз; factor > 1 делает громче, если factor < 1 делает тише")
-                print("change_speed [factor] - изменяет скорость в factor раз; factor > 1 делает быстрее, если factor < 1 делает медленнее")
+                print(
+                    "change_volume [factor] - изменяет громкость в factor раз; factor > 1 делает громче, если factor < 1 делает тише")
+                print(
+                    "change_speed [factor] - изменяет скорость в factor раз; factor > 1 делает быстрее, если factor < 1 делает медленнее")
                 print("trim [start_sec] [end_sec] - обрезает всё до start_sec и после end_sec")
                 print("cut [start_sec] [end_sec] - вырезает фрагмент с start_sec до end_sec")
+                print("take_fragment [start_sec] [end_sec] - выделяет фрагмент с start_sec до end_sec")
                 print("concat [path_to_audio] - соединяет обрабатываемое аудио с введённым")
             case _:
                 print(red("Неизвестная операция"))
