@@ -33,6 +33,7 @@ class Sound:
         output_raw_bytes = process.run(capture_stdout=True, capture_stderr=True)[0]
         self._fmt_char = "h"
         self.sampwidth = 2
+        self._dtype = np.int16
         self._min_val = -(2 ** (8 * self.sampwidth - 1))
         self._max_val = -self._min_val - 1
         bytes_per_sample = 2 * self.nchannels
