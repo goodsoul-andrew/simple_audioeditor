@@ -115,6 +115,8 @@ class SoundEffects:
         self.sound.frames = np.copy(self.original_frames)
         self.sound.framerate = self.original_framerate
         self.sound.nchannels = self.original_nchannels
+        self.fr_start = 0
+        self.fr_end = self.sound.nframes
 
     # выполнить первые count операций из истории
     def replay_operation(self, count=None):
