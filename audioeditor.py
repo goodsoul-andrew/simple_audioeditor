@@ -49,6 +49,13 @@ while True:
                 end_sec = float(args[1])
                 effects = effects.select_fragment(start_sec, end_sec)
                 print(green(f"Выделен фрагмент {start_sec}-{end_sec} сек"))
+            case "undo_last":
+                effects.undo_last()
+                print(green(f"Отменено: {effects.last['operation']}"))
+            case "replay_operation":
+                count = int(args[0])
+                effects.replay_operation(count)
+                print(green(f"Выполнено заново первые {count} операций"))
             case "save":
                 new_name = args[0]
                 snd.save(new_name)
@@ -64,6 +71,8 @@ while True:
                 print("cut [start_sec] [end_sec] - вырезает фрагмент с start_sec до end_sec")
                 print("select_fragment [start_sec] [end_sec] - выделяет фрагмент с start_sec до end_sec")
                 print("concat [path_to_audio] - соединяет обрабатываемое аудио с введённым")
+                print("undo_last - удаляет последнюю выполненную операцию")
+                print("replay_operation [count] - выполняет первые count операций из истории")
             case _:
                 print(red("Неизвестная операция"))
     except Exception as exc:

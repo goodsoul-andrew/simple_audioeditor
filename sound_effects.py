@@ -5,16 +5,19 @@ from sound import Sound
 class SoundEffects:
     def __init__(self, sound: Sound):
         self.sound = sound
-        self.effects_history = []
+        self.history = []
         self.original_frames = np.copy(self.sound.frames)
         self.original_nchannels = self.sound.nchannels
         self.original_framerate = self.sound.framerate
         self.fr_start = 0
         self.fr_end = self.sound.nframes
         self.fragment_reset = False
+        self.last = {}
+        self._rebuilding = False
 
     def __record(self, operation: str, **kwargs):
-        self.effects_history.append({"operation": operation, **kwargs})
+        if getattr(self, "_rebuilding", False): return
+        self.history.append({"operation": operation, **kwargs})
 
     def __update_fragment(self):
         if self.fr_end > self.sound.frames.shape[1]:
@@ -23,6 +26,24 @@ class SoundEffects:
         if self.fr_start >= self.fr_end:
             self.fragment_reset = True
             self.fr_start = 0
+
+    def __rebuild_sound(self, history):
+        self.return_to_original()
+        self._rebuilding = True
+        for op in history:
+            if op["operation"] == "change_volume":
+                self.change_volume(op["factor"])
+            elif op["operation"] == "change_speed":
+                self.change_speed(op["factor"])
+            elif op["operation"] == "cut":
+                self.cut_fragment(op["start_sec"], op["end_sec"])
+            elif op["operation"] == "concat":
+                self.concat(op["other"])
+            elif op["operation"] == "trim":
+                self.trim(op["start_sec"], op["end_sec"])
+            elif op["operation"] == "select_fragment":
+                self.select_fragment(op["start_sec"], op["end_sec"])
+        self._rebuilding = False
 
     def change_volume(self, factor: float):
         amplified_frames = self.sound.frames[:, self.fr_start:self.fr_end] * factor
@@ -35,7 +56,7 @@ class SoundEffects:
         # factor > 1 - ускорение
         # factor < 1 - замедление
         if factor <= 0:
-            raise ValueError("Factor must be > 0")
+            raise ValueError("Фактор должен быть > 0!")
         old_len = self.fr_end - self.fr_start
         new_len = int(old_len / factor)
         if new_len <= 0:
@@ -44,7 +65,8 @@ class SoundEffects:
         indices = np.clip(indices, 0, old_len - 1)
         # self.sound.frames[:, self.fr_start:self.fr_end] = self.sound.frames[:, indices]
         indices += self.fr_start
-        self.sound.frames = np.hstack((self.sound.frames[:, 0:self.fr_start], self.sound.frames[:, indices], self.sound.frames[:, self.fr_end:self.sound.nframes]))
+        self.sound.frames = np.hstack((self.sound.frames[:, 0:self.fr_start], self.sound.frames[:, indices],
+                                       self.sound.frames[:, self.fr_end:self.sound.nframes]))
         self.__record("change_speed", factor=factor, fragment=(self.fr_start, self.fr_end))
         self.__update_fragment()
         return self
@@ -80,15 +102,13 @@ class SoundEffects:
         self.fr_end = int(end_sec * self.sound.framerate)
         if self.fr_end > self.sound.nframes or self.fr_start < 0 or self.fr_start >= self.fr_end:
             raise ValueError("Некорректные границы фрагмента!")
-        '''new_frames = np.copy(self.sound.frames[:, start_idx:end_idx])
-        fragment = Sound.__new__(Sound)
-        fragment.frames = new_frames
-        fragment.nframes = new_frames.shape[1]
-        fragment.nchannels = self.sound.nchannels
-        fragment.framerate = self.sound.framerate
-        fragment.sampwidth = self.sound.sampwidth
-        fragment.path = None'''
         self.__record("select_fragment", start_sec=start_sec, end_sec=end_sec)
+        return self
+
+    def undo_last(self):
+        if not self.history: raise ValueError("История пуста!")
+        self.last = self.history.pop()
+        self.__rebuild_sound(self.history)
         return self
 
     def return_to_original(self):
@@ -98,17 +118,9 @@ class SoundEffects:
 
     # выполнить первые count операций из истории
     def replay_operation(self, count=None):
-        self.return_to_original()
-        for op in (self.effects_history[:count] if count else self.effects_history):
-            if op["operation"] == "change_volume":
-                self.change_volume(op["factor"])
-            elif op["operation"] == "change_speed":
-                self.change_speed(op["factor"])
-            elif op["operation"] == "cut":
-                self.cut_fragment(op["start_sec"], op["end_sec"])
-            elif op["operation"] == "concat":
-                self.concat(op["other"])
+        history = self.history[:count] if count else self.history
+        self.__rebuild_sound(history)
 
     def show_effects_history(self):
-        for i, op in enumerate(self.effects_history, 1):
+        for i, op in enumerate(self.history, 1):
             print(f"{i}: {op}")
