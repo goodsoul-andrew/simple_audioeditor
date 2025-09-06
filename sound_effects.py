@@ -9,15 +9,26 @@ class SoundEffects:
         self.original_frames = np.copy(self.sound.frames)
         self.original_nchannels = self.sound.nchannels
         self.original_framerate = self.sound.framerate
+        self.fr_start = 0
+        self.fr_end = self.sound.nframes
+        self.fragment_reset = False
 
     def __record(self, operation: str, **kwargs):
         self.effects_history.append({"operation": operation, **kwargs})
 
+    def __update_fragment(self):
+        if self.fr_end > self.sound.frames.shape[1]:
+            self.fragment_reset = True
+            self.fr_end = self.sound.frames.shape[1]
+        if self.fr_start >= self.fr_end:
+            self.fragment_reset = True
+            self.fr_start = 0
+
     def change_volume(self, factor: float):
-        amplified_frames = self.sound.frames * factor
+        amplified_frames = self.sound.frames[:, self.fr_start:self.fr_end] * factor
         clipped_frames = np.clip(amplified_frames, -1.0, 1.0)
-        self.sound.frames = clipped_frames
-        self.__record("change_volume", factor=factor)
+        self.sound.frames[:, self.fr_start:self.fr_end] = clipped_frames
+        self.__record("change_volume", factor=factor, fragment=(self.fr_start, self.fr_end))
         return self
 
     def change_speed(self, factor: float):
@@ -25,15 +36,17 @@ class SoundEffects:
         # factor < 1 - замедление
         if factor <= 0:
             raise ValueError("Factor must be > 0")
-        old_len = self.sound.nframes
-        new_len = int(self.sound.frames.shape[1] / factor)
+        old_len = self.fr_end - self.fr_start
+        new_len = int(old_len / factor)
         if new_len <= 0:
             raise ValueError("Слишком большое ускорение!")
         indices = np.floor(np.arange(new_len) * factor).astype(int)
         indices = np.clip(indices, 0, old_len - 1)
-        self.sound.nframes = new_len
-        self.sound.frames = self.sound.frames[:, indices]
-        self.__record("change_speed", factor=factor)
+        # self.sound.frames[:, self.fr_start:self.fr_end] = self.sound.frames[:, indices]
+        indices += self.fr_start
+        self.sound.frames = np.hstack((self.sound.frames[:, 0:self.fr_start], self.sound.frames[:, indices], self.sound.frames[:, self.fr_end:self.sound.nframes]))
+        self.__record("change_speed", factor=factor, fragment=(self.fr_start, self.fr_end))
+        self.__update_fragment()
         return self
 
     def cut_fragment(self, start_sec: float, end_sec: float):
@@ -41,8 +54,7 @@ class SoundEffects:
         end_idx = int(end_sec * self.sound.framerate)
         indices_to_keep = np.concatenate((np.arange(start_idx), np.arange(end_idx, self.sound.frames.shape[1])))
         self.sound.frames = self.sound.frames[:, indices_to_keep]
-        # self.sound.frames = self.sound.frames[:, start_idx:end_idx]
-        self.sound.nframes = self.sound.frames.shape[1]
+        self.__update_fragment()
         self.__record("cut", start_sec=start_sec, end_sec=end_sec)
         return self
 
@@ -50,7 +62,9 @@ class SoundEffects:
         start_idx = int(start_sec * self.sound.framerate)
         end_idx = int(end_sec * self.sound.framerate)
         self.sound.frames = self.sound.frames[:, start_idx:end_idx]
-        self.sound.nframes = self.sound.frames.shape[1]
+        self.fr_start = min(self.fr_start, self.sound.nframes)
+        self.fr_end = min(self.fr_end, self.sound.nframes)
+        self.__update_fragment()
         self.__record("trim", start_sec=start_sec, end_sec=end_sec)
         return self
 
@@ -58,23 +72,24 @@ class SoundEffects:
         if self.sound.nchannels != other.nchannels or self.sound.framerate != other.framerate:
             raise ValueError("Разные расширения! Чтобы склеить, необходимо иметь одинаковый формат")
         self.sound.frames = np.concatenate((self.sound.frames, other.frames), axis=1)
-        self.sound.nframes = self.sound.frames.shape[1]
         self.__record("concat", other=other)
         return self
 
-    def take_fragment(self, start_sec: float, end_sec: float):
-        start_idx = int(start_sec * self.sound.framerate)
-        end_idx = int(end_sec * self.sound.framerate)
-        new_frames = np.copy(self.sound.frames[:, start_idx:end_idx])
+    def select_fragment(self, start_sec: float, end_sec: float):
+        self.fr_start = int(start_sec * self.sound.framerate)
+        self.fr_end = int(end_sec * self.sound.framerate)
+        if self.fr_end > self.sound.nframes or self.fr_start < 0 or self.fr_start >= self.fr_end:
+            raise ValueError("Некорректные границы фрагмента!")
+        '''new_frames = np.copy(self.sound.frames[:, start_idx:end_idx])
         fragment = Sound.__new__(Sound)
         fragment.frames = new_frames
         fragment.nframes = new_frames.shape[1]
         fragment.nchannels = self.sound.nchannels
         fragment.framerate = self.sound.framerate
         fragment.sampwidth = self.sound.sampwidth
-        fragment.path = None
-        self.__record("take_fragment", start_sec=start_sec, end_sec=end_sec)
-        return SoundEffects(fragment)
+        fragment.path = None'''
+        self.__record("select_fragment", start_sec=start_sec, end_sec=end_sec)
+        return self
 
     def return_to_original(self):
         self.sound.frames = np.copy(self.original_frames)

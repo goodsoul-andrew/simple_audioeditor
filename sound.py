@@ -46,8 +46,11 @@ class Sound:
                 sample = unpacked_samples[i * self.nchannels + ch]
                 audio_data_list[ch].append(sample)
         self.frames = self.__normalize_frames(np.array(audio_data_list))
-        self.nframes = len(self.frames[0])
         self.__get_mp3_tags()
+
+    @property
+    def nframes(self):
+        return self.frames.shape[1]
 
     def __get_mp3_tags(self):
         metadata = {}
@@ -71,10 +74,10 @@ class Sound:
     def _from_wav(self, filename: str):
         with wave.open(filename, "rb") as file:
             self.nchannels = file.getnchannels()
-            self.nframes = file.getnframes()
+            nframes = file.getnframes()
             self.sampwidth = file.getsampwidth()
             self.framerate = file.getframerate()
-            frames = file.readframes(self.nframes)
+            frames = file.readframes(nframes)
             if self.sampwidth == 1:
                 self._min_val = 0
                 self._max_val = 255
