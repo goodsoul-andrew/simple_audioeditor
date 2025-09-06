@@ -39,6 +39,13 @@ class TestSoundEditor(unittest.TestCase):
         new_len = len(self.sound.frames[0])
         self.assertGreater(new_len, original_len)
 
+    def test_take_fragment(self):
+        original_len = len(self.sound.frames[0])
+        fragment = self.effects.take_fragment(10, 20)
+        new_len = len(fragment.sound.frames[0])
+        self.assertLess(new_len, original_len)
+        self.assertGreater(new_len, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
