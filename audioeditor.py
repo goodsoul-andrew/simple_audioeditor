@@ -3,7 +3,7 @@ from sound import Sound
 from sound_effects import SoundEffects
 from colored_text import red, green, light_green
 
-parser = argparse.ArgumentParser(description="Консольный редактор аудио. Введите ")
+parser = argparse.ArgumentParser(description="Консольный аудио редактор.")
 parser.add_argument("filename", type=str, help="Путь до обрабатываемого файла", )
 args = parser.parse_args()
 print("Вводите команды. Команда 'help' выведет список доступных операций")
@@ -64,15 +64,15 @@ while True:
                 effects.show_effects_history()
             case "help":
                 print(
-                    "change_volume [factor] - изменяет громкость в factor раз; factor > 1 делает громче, если factor < 1 делает тише")
+                    "- change_volume [factor] - изменяет громкость в factor раз; factor > 1 делает громче, если factor < 1 делает тише")
                 print(
-                    "change_speed [factor] - изменяет скорость в factor раз; factor > 1 делает быстрее, если factor < 1 делает медленнее")
-                print("trim [start_sec] [end_sec] - обрезает всё до start_sec и после end_sec")
-                print("cut [start_sec] [end_sec] - вырезает фрагмент с start_sec до end_sec")
-                print("select_fragment [start_sec] [end_sec] - выделяет фрагмент с start_sec до end_sec")
-                print("concat [path_to_audio] - соединяет обрабатываемое аудио с введённым")
-                print("undo_last - удаляет последнюю выполненную операцию")
-                print("replay_operation [count] - выполняет первые count операций из истории")
+                    "- change_speed [factor] - изменяет скорость в factor раз; factor > 1 делает быстрее, если factor < 1 делает медленнее")
+                print("- trim [start_sec] [end_sec] - обрезает всё до start_sec и после end_sec")
+                print("- cut [start_sec] [end_sec] - вырезает фрагмент с start_sec до end_sec")
+                print("- select_fragment [start_sec] [end_sec] - выделяет фрагмент с start_sec до end_sec")
+                print("- concat [path_to_audio] - соединяет обрабатываемое аудио с введённым")
+                print("- undo_last - удаляет последнюю выполненную операцию")
+                print("- replay_operation [count] - выполняет первые count операций из истории")
             case _:
                 print(red("Неизвестная операция"))
     except Exception as exc:
