@@ -6,7 +6,7 @@ from colored_text import red, green, light_green
 parser = argparse.ArgumentParser(description="Консольный аудио редактор.")
 parser.add_argument("filename", type=str, help="Путь до обрабатываемого файла", )
 args = parser.parse_args()
-print("Вводите команды. Команда 'help' выведет список доступных операций")
+print("Вводите команды. Команда 'commands' выведет список доступных операций")
 snd = Sound(args.filename)
 effects = SoundEffects(snd)
 while True:
@@ -42,7 +42,7 @@ while True:
                 other_filename = args[0]
                 other = Sound(other_filename)
                 effects = effects.concat(other)
-                print(green(f"Соединено с '{other_filename} в конце'"))
+                print(green(f"Соединено с '{other_filename}' в конце"))
                 del other
             case "select_fragment":
                 start_sec = float(args[0])
@@ -62,7 +62,7 @@ while True:
                 print(green(f"Сохранено в '{new_name}'"))
             case "history":
                 effects.show_effects_history()
-            case "help":
+            case "commands":
                 print(
                     "- change_volume [factor] - изменяет громкость в factor раз; factor > 1 делает громче, если factor < 1 делает тише")
                 print(
@@ -73,6 +73,9 @@ while True:
                 print("- concat [path_to_audio] - соединяет обрабатываемое аудио с введённым")
                 print("- undo_last - удаляет последнюю выполненную операцию")
                 print("- replay_operation [count] - выполняет первые count операций из истории")
+                print("- save [new_name] - сохраняет результат в new_name")
+                print("- history - показывает историю операций")
+                print("- commands - показывает справку по командам операций")
             case _:
                 print(red("Неизвестная операция"))
     except Exception as exc:
