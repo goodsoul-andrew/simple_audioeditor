@@ -1,10 +1,8 @@
-import itertools
 import os
 import struct
 import uuid
 import wave
 import ffmpeg
-import pydub
 import numpy as np
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TCON, TDRC, TRCK, APIC
 from mutagen.mp3 import MP3
@@ -15,12 +13,18 @@ from converters import mp3_to_wav, wav_to_mp3
 class Sound:
     def __init__(self, filename):
         self.filename = filename
+        self.filename_stripped = filename[:-4]
         if filename[-4:] == ".wav":
             Sound._from_wav(self, filename)
         elif filename[-4:] == ".mp3":
             Sound._from_mp3(self, filename)
         else:
             raise ValueError("Неподдерживаемый формат аудио!")
+
+    @staticmethod
+    def create_supersound(*sounds: "Sound"):
+        ...
+
 
     def _from_mp3(self, filename):
         probe = ffmpeg.probe(filename)

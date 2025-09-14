@@ -117,12 +117,21 @@ class SoundEffects:
         self.sound.nchannels = self.original_nchannels
         self.fr_start = 0
         self.fr_end = self.sound.nframes
+        return self
 
     # выполнить первые count операций из истории
     def replay_operation(self, count=None):
         history = self.history[:count] if count else self.history
         self.__rebuild_sound(history)
+        return self
 
     def show_effects_history(self):
         for i, op in enumerate(self.history, 1):
             print(f"{i}: {op}")
+
+    def save(self, filename=None):
+        if not filename:
+            filename = self.sound.filename
+        self.sound.save(filename)
+        return self
+
