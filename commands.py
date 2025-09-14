@@ -86,7 +86,7 @@ def do_command(line: str, effects: SoundEffects):
                 print("- concat [path_to_audio] - соединяет обрабатываемое аудио с введённым")
                 print("- undo_last - удаляет последнюю выполненную операцию")
                 print("- replay_operation [count] - выполняет первые count операций из истории")
-                print("- save [new_name] - сохраняет результат в new_name")
+                print("- save [new_name] - сохраняет результат в new_name, если new_name содержит строку '{filename}', то {filename} заменится на оригинальное имя")
                 print("- history - показывает историю операций")
                 print("- commands - показывает справку по командам операций")
             case _:
