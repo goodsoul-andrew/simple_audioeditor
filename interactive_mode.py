@@ -13,7 +13,19 @@ def interactive_mode(filename: str):
         print(red(err))
         return
     except FileNotFoundError as err:
-        print(red(f"Файл {filename} не найден."))
+        print(red(f"Файл {filename} не найден"))
         return
+
+    empty_count = 0
     while True:
-        do_command(input(), effects)
+        command = input()
+        if command == "":
+            empty_count += 1
+            if empty_count >= 2:
+                print("Выход из интерактивного режима")
+                break
+            else:
+                continue
+        else:
+            empty_count = 0
+            do_command(command, effects)

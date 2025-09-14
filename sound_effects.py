@@ -1,3 +1,4 @@
+import librosa
 import numpy as np
 from sound import Sound
 
@@ -119,8 +120,8 @@ class SoundEffects:
         self.fr_end = self.sound.nframes
         return self
 
-    # выполнить первые count операций из истории
     def replay_operation(self, count=None):
+        """выполнить первые count операций из истории"""
         history = self.history[:count] if count else self.history
         self.__rebuild_sound(history)
         return self
@@ -135,3 +136,20 @@ class SoundEffects:
         self.sound.save(filename)
         return self
 
+    def change_pitch(self, factor: float):
+        """изменить высоту звука на factor > 0 - выше, factor < 0 - ниже"""
+        if self.sound.nchannels == 2:
+            audio = self.sound.frames.T  # транспонируем массив, (n_samples, 2)
+            shifted = np.zeros_like(audio)
+            for ch in range(2):
+                shifted[:, ch] = librosa.effects.pitch_shift(
+                    audio[:, ch], sr=self.sound.framerate, n_steps=factor)
+            new_frames = shifted.T
+        else:
+            audio = self.sound.frames[0]
+            shifted = librosa.effects.pitch_shift(audio, sr=self.sound.framerate, n_steps=factor)
+            new_frames = np.array([shifted])
+
+        self.sound.frames = new_frames
+        self.__record("change_pitch", n_steps=factor, fragment=(self.fr_start, self.fr_end))
+        return self
