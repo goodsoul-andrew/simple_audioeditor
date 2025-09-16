@@ -61,7 +61,7 @@ class Sound:
         audio = MP3(self.filename, ID3=ID3)
         if audio.tags is None:
             self.mp3_metadata = {}
-        # print(audio.tags)
+            return
         if 'TIT2' in audio.tags: metadata['title'] = audio.tags['TIT2'].text[0] if audio.tags['TIT2'].text else None
         if 'TPE1' in audio.tags: metadata['artist'] = audio.tags['TPE1'].text[0] if audio.tags['TPE1'].text else None
         if 'TALB' in audio.tags: metadata['album'] = audio.tags['TALB'].text[0] if audio.tags['TALB'].text else None
